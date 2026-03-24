@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { User } from "./types";
-import { mockUsers } from "./mock-data";
+
+const ADMIN_EMAIL = "creativevalue26@gmail.com";
 
 interface AuthContextType {
   user: User | null;
@@ -15,26 +16,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   const login = (email: string, _password: string) => {
-    const found = mockUsers.find((u) => u.email === email);
-    if (found) {
-      setUser(found);
-      return true;
-    }
-    // For demo: any email with "admin" logs in as admin
-    if (email.includes("admin")) {
-      const newUser: User = { id: Date.now().toString(), name: "Admin", email, role: "admin" };
-      setUser(newUser);
+    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      setUser({ id: "admin-1", name: "Admin", email, role: "admin" });
       return true;
     }
     // Any other email logs in as student
-    const newUser: User = { id: Date.now().toString(), name: email.split("@")[0], email, role: "student" };
-    setUser(newUser);
+    setUser({ id: Date.now().toString(), name: email.split("@")[0], email, role: "student" });
     return true;
   };
 
   const register = (name: string, email: string, _password: string) => {
-    const newUser: User = { id: Date.now().toString(), name, email, role: "student" };
-    setUser(newUser);
+    setUser({ id: Date.now().toString(), name, email, role: "student" });
     return true;
   };
 
