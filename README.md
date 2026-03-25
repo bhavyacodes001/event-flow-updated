@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Event Flow
 
-TODO: Document your project here
+Event Management System
