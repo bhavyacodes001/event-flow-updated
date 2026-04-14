@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { mockEvents } from "@/lib/mock-data";
-import { CollegeEvent } from "@/lib/types";
+import React from "react";
+import { useData } from "@/lib/data-context";
 import { Plus, Pencil, Trash2, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -8,10 +7,10 @@ import { Link } from "react-router-dom";
 import { format } from "date-fns";
 
 const AdminEventsPage = () => {
-  const [events, setEvents] = useState<CollegeEvent[]>(mockEvents);
+  const { events, deleteEvent } = useData();
 
   const handleDelete = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    deleteEvent(id);
     toast.success("Event deleted");
   };
 

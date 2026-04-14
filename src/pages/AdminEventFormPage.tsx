@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { mockEvents } from "@/lib/mock-data";
+import { useData } from "@/lib/data-context";
 import { EventCategory } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 const categories: EventCategory[] = ["Technical", "Cultural", "Sports", "Workshop", "Seminar", "Social"];
 
 const AdminEventFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const { events, addEvent, updateEvent } = useData();
   const isEdit = Boolean(id && id !== "new");
-  const existingEvent = isEdit ? mockEvents.find((e) => e.id === id) : null;
+  const existingEvent = isEdit ? events.find((e) => e.id === id) : null;
 
   const [form, setForm] = useState({
     title: existingEvent?.title || "",
@@ -37,7 +40,33 @@ const AdminEventFormPage = () => {
       toast.error("Please fill in all required fields");
       return;
     }
-    toast.success(isEdit ? "Event updated successfully" : "Event created successfully");
+    
+    if (isEdit && id) {
+      updateEvent(id, {
+        title: form.title,
+        description: form.description,
+        date: form.date,
+        time: form.time,
+        venue: form.venue,
+        category: form.category,
+        totalSeats: parseInt(form.totalSeats),
+      });
+      toast.success("Event updated successfully");
+    } else {
+      addEvent({
+        title: form.title,
+        description: form.description,
+        date: form.date,
+        time: form.time,
+        venue: form.venue,
+        category: form.category,
+        totalSeats: parseInt(form.totalSeats),
+        posterUrl: "",
+        createdBy: user?.id || "admin-1",
+      });
+      toast.success("Event created successfully");
+    }
+    
     navigate("/admin/events");
   };
 

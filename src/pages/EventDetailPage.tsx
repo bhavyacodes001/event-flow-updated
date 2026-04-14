@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { mockEvents, mockRegistrations } from "@/lib/mock-data";
+import { useData } from "@/lib/data-context";
 import { useAuth } from "@/lib/auth-context";
 import StudentNavbar from "@/components/StudentNavbar";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,11 @@ const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const event = mockEvents.find((e) => e.id === id);
+  const { events, registrations, registerStudent, updateRegistrationStatus } = useData();
+  const event = events.find((e) => e.id === id);
 
-  const [isRegistered, setIsRegistered] = useState(() => {
-    if (!user) return false;
-    return mockRegistrations.some((r) => r.eventId === id && r.studentId === user.id);
-  });
+  const isRegistered = user ? registrations.some((r) => r.eventId === id && r.studentId === user.id && r.status !== "rejected") : false;
+  const userRegistration = user ? registrations.find((r) => r.eventId === id && r.studentId === user.id && r.status !== "rejected") : undefined;
 
   if (!event) {
     return (
@@ -38,13 +37,21 @@ const EventDetailPage = () => {
       toast.error("This event is full");
       return;
     }
-    setIsRegistered(true);
+    if (!user) {
+      toast.error("You must be logged in to register");
+      navigate("/login");
+      return;
+    }
+    
+    registerStudent(event.id, { id: user.id, name: user.name, email: user.email });
     toast.success("Successfully registered! Your registration is pending approval.");
   };
 
   const handleCancel = () => {
-    setIsRegistered(false);
-    toast.success("Registration cancelled");
+    if (userRegistration) {
+      updateRegistrationStatus(userRegistration.id, "rejected");
+      toast.success("Registration cancelled");
+    }
   };
 
   return (

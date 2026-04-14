@@ -1,5 +1,5 @@
 import React from "react";
-import { mockRegistrations, mockEvents } from "@/lib/mock-data";
+import { useData } from "@/lib/data-context";
 import { useAuth } from "@/lib/auth-context";
 import StudentNavbar from "@/components/StudentNavbar";
 import { CalendarDays, MapPin, ClipboardList } from "lucide-react";
@@ -8,7 +8,8 @@ import { format } from "date-fns";
 
 const MyRegistrationsPage = () => {
   const { user } = useAuth();
-  const myRegistrations = mockRegistrations.filter((r) => r.studentId === user?.id);
+  const { events, registrations } = useData();
+  const myRegistrations = registrations.filter((r) => r.studentId === user?.id);
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
@@ -37,7 +38,7 @@ const MyRegistrationsPage = () => {
         ) : (
           <div className="space-y-3">
             {myRegistrations.map((reg) => {
-              const event = mockEvents.find((e) => e.id === reg.eventId);
+              const event = events.find((e) => e.id === reg.eventId);
               if (!event) return null;
               return (
                 <Link

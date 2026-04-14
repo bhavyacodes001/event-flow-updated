@@ -14,14 +14,14 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
-    const success = login(email, password);
+    const success = await login(email, password);
     if (success) {
       if (email.toLowerCase() === "creativevalue26@gmail.com") {
         navigate("/admin");
@@ -29,7 +29,7 @@ const LoginPage = () => {
         navigate("/events");
       }
     } else {
-      setError("Invalid credentials");
+      setError("Invalid credentials or unverified email. Please check your email for a verification link.");
     }
   };
 

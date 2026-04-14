@@ -1,15 +1,16 @@
 import React from "react";
-import { mockEvents, mockRegistrations } from "@/lib/mock-data";
+import { useData } from "@/lib/data-context";
 import { CalendarDays, Users, ClipboardList, TrendingUp, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const totalEvents = mockEvents.length;
-  const totalRegistrations = mockRegistrations.length;
-  const pendingApprovals = mockRegistrations.filter((r) => r.status === "pending").length;
-  const totalSeatsUsed = mockEvents.reduce((sum, e) => sum + e.registeredCount, 0);
+  const { events, registrations } = useData();
+  const totalEvents = events.length;
+  const totalRegistrations = registrations.length;
+  const pendingApprovals = registrations.filter((r) => r.status === "pending").length;
+  const totalSeatsUsed = events.reduce((sum, e) => sum + e.registeredCount, 0);
 
   const stats = [
     { label: "Total Events", value: totalEvents, icon: CalendarDays, accent: "bg-blue-500/10 text-blue-600" },
@@ -90,7 +91,7 @@ const AdminDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {mockEvents.slice(0, 5).map((event) => {
+            {events.slice(0, 5).map((event) => {
               const fill = Math.round((event.registeredCount / event.totalSeats) * 100);
               return (
                 <tr key={event.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">

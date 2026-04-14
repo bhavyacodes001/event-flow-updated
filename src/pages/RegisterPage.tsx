@@ -15,7 +15,7 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!name || !email || !password) {
@@ -26,11 +26,12 @@ const RegisterPage = () => {
       setError("Password must be at least 6 characters");
       return;
     }
-    const success = register(name, email, password);
+    const success = await register(name, email, password);
     if (success) {
-      navigate("/events");
+      setError("Success! Please check your email inbox to verify your account before logging in.");
+      // Optional: navigate("/login");
     } else {
-      setError("Registration failed");
+      setError("Registration failed. Email might already be in use.");
     }
   };
 

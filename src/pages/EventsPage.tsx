@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { mockEvents } from "@/lib/mock-data";
+import { useData } from "@/lib/data-context";
 import { EventCategory } from "@/lib/types";
 import StudentNavbar from "@/components/StudentNavbar";
 import EventCard from "@/components/EventCard";
@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input";
 const categories: EventCategory[] = ["Technical", "Cultural", "Sports", "Workshop", "Seminar", "Social"];
 
 const EventsPage = () => {
+  const { events: contextEvents } = useData();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | "All">("All");
   const [sortBy, setSortBy] = useState<"date" | "seats">("date");
 
   const filteredEvents = useMemo(() => {
-    let events = [...mockEvents];
+    let events = [...contextEvents];
 
     if (search) {
       const q = search.toLowerCase();

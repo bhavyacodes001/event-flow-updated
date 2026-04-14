@@ -1,24 +1,23 @@
 import React, { useState } from "react";
-import { mockRegistrations, mockEvents } from "@/lib/mock-data";
-import { Registration } from "@/lib/types";
+import { useData } from "@/lib/data-context";
 import { Button } from "@/components/ui/button";
 import { Check, X, ClipboardList, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 const AdminRegistrationsPage = () => {
-  const [registrations, setRegistrations] = useState<Registration[]>(mockRegistrations);
+  const { events, registrations, updateRegistrationStatus } = useData();
   const [filterEvent, setFilterEvent] = useState<string>("all");
 
   const filtered = filterEvent === "all" ? registrations : registrations.filter((r) => r.eventId === filterEvent);
 
   const handleApprove = (id: string) => {
-    setRegistrations((prev) => prev.map((r) => (r.id === id ? { ...r, status: "approved" } : r)));
+    updateRegistrationStatus(id, "approved");
     toast.success("Registration approved");
   };
 
   const handleReject = (id: string) => {
-    setRegistrations((prev) => prev.map((r) => (r.id === id ? { ...r, status: "rejected" } : r)));
+    updateRegistrationStatus(id, "rejected");
     toast.success("Registration rejected");
   };
 
@@ -47,7 +46,7 @@ const AdminRegistrationsPage = () => {
         >
           All Events
         </button>
-        {mockEvents.map((event) => (
+        {events.map((event) => (
           <button
             key={event.id}
             onClick={() => setFilterEvent(event.id)}
@@ -79,7 +78,7 @@ const AdminRegistrationsPage = () => {
             </thead>
             <tbody>
               {filtered.map((reg) => {
-                const event = mockEvents.find((e) => e.id === reg.eventId);
+                const event = events.find((e) => e.id === reg.eventId);
                 return (
                   <tr key={reg.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="py-3 px-4">

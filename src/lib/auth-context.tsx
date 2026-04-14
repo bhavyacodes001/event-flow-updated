@@ -1,40 +1,96 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User } from "./types";
+import { supabase } from "./supabase";
+import { toast } from "sonner";
 
-const ADMIN_EMAIL = "creativevalue26@gmail.com";
+const ADMIN_EMAIL = "creativevalue26@gmail.com"; // Keep hardcoded admin check for simple RBAC
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => boolean;
-  register: (name: string, email: string, password: string) => boolean;
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (email: string, _password: string) => {
-    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-      setUser({ id: "admin-1", name: "Admin", email, role: "admin" });
-      return true;
+  useEffect(() => {
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const uEmail = session.user.email || "";
+        const uRole = uEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? "admin" : "student";
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || uEmail.split("@")[0],
+          email: uEmail,
+          role: uRole,
+        });
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session?.user) {
+          const uEmail = session.user.email || "";
+          const uRole = uEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? "admin" : "student";
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || uEmail.split("@")[0],
+            email: uEmail,
+            role: uRole,
+          });
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast.error(error.message);
+      return false;
     }
-    // Any other email logs in as student
-    setUser({ id: Date.now().toString(), name: email.split("@")[0], email, role: "student" });
     return true;
   };
 
-  const register = (name: string, email: string, _password: string) => {
-    setUser({ id: Date.now().toString(), name, email, role: "student" });
+  const register = async (name: string, email: string, password: string) => {
+    // Supabase will automatically send a verification email if that setting is enabled in the dashboard
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+        },
+      },
+    });
+    
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
     return true;
   };
 
-  const logout = () => setUser(null);
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

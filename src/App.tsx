@@ -53,6 +53,8 @@ const AppRoutes = () => {
   );
 };
 
+import { DataProvider } from "@/lib/data-context";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -60,7 +62,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <DataProvider>
+            <AppRoutes />
+          </DataProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
