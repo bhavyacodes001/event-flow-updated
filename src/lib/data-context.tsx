@@ -1,129 +1,150 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { CollegeEvent, Registration, RegistrationStatus } from "./types";
-import { mockEvents, mockRegistrations } from "./mock-data";
+import { supabase } from "./supabase";
+import { toast } from "sonner";
 
 interface DataContextType {
   events: CollegeEvent[];
   registrations: Registration[];
-  addEvent: (event: Omit<CollegeEvent, "id" | "registeredCount">) => void;
-  updateEvent: (id: string, updates: Partial<CollegeEvent>) => void;
-  deleteEvent: (id: string) => void;
-  registerStudent: (eventId: string, student: { id: string; name: string; email: string }) => void;
-  updateRegistrationStatus: (registrationId: string, status: RegistrationStatus) => void;
+  addEvent: (event: Omit<CollegeEvent, "id" | "registeredCount">) => Promise<void>;
+  updateEvent: (id: string, updates: Partial<CollegeEvent>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
+  registerStudent: (eventId: string, student: { id: string; name: string; email: string }) => Promise<void>;
+  updateRegistrationStatus: (registrationId: string, status: RegistrationStatus) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
-
-const LOCAL_STORAGE_KEY_EVENTS = "event-flow-events";
-const LOCAL_STORAGE_KEY_REGISTRATIONS = "event-flow-registrations";
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<CollegeEvent[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Initialize data from local storage or fallback to mock data
   useEffect(() => {
-    const storedEvents = localStorage.getItem(LOCAL_STORAGE_KEY_EVENTS);
-    const storedRegistrations = localStorage.getItem(LOCAL_STORAGE_KEY_REGISTRATIONS);
-
-    if (storedEvents) {
-      setEvents(JSON.parse(storedEvents));
-    } else {
-      setEvents(mockEvents);
-      localStorage.setItem(LOCAL_STORAGE_KEY_EVENTS, JSON.stringify(mockEvents));
-    }
-
-    if (storedRegistrations) {
-      setRegistrations(JSON.parse(storedRegistrations));
-    } else {
-      setRegistrations(mockRegistrations);
-      localStorage.setItem(LOCAL_STORAGE_KEY_REGISTRATIONS, JSON.stringify(mockRegistrations));
-    }
-    
-    setIsLoaded(true);
+    fetchData();
   }, []);
 
-  // Sync back to local storage whenever events change
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(LOCAL_STORAGE_KEY_EVENTS, JSON.stringify(events));
-    }
-  }, [events, isLoaded]);
+  const fetchData = async () => {
+    try {
+      const [{ data: eventsData }, { data: regsData }] = await Promise.all([
+        supabase.from("events").select("*").order("date", { ascending: true }),
+        supabase.from("registrations").select("*").order("registeredAt", { ascending: false }),
+      ]);
 
-  // Sync back to local storage whenever registrations change
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(LOCAL_STORAGE_KEY_REGISTRATIONS, JSON.stringify(registrations));
+      if (eventsData) setEvents(eventsData as CollegeEvent[]);
+      if (regsData) setRegistrations(regsData as Registration[]);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoaded(true);
     }
-  }, [registrations, isLoaded]);
-
-  const addEvent = (eventData: Omit<CollegeEvent, "id" | "registeredCount">) => {
-    const newEvent: CollegeEvent = {
-      ...eventData,
-      id: `e${Date.now()}`,
-      registeredCount: 0,
-    };
-    setEvents((prev) => [...prev, newEvent]);
   };
 
-  const updateEvent = (id: string, updates: Partial<CollegeEvent>) => {
-    setEvents((prev) =>
-      prev.map((event) => (event.id === id ? { ...event, ...updates } : event))
-    );
+  const addEvent = async (eventData: Omit<CollegeEvent, "id" | "registeredCount">) => {
+    const { data: newEvent, error } = await supabase
+      .from("events")
+      .insert([eventData])
+      .select()
+      .single();
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (newEvent) {
+      setEvents((prev) => [...prev, newEvent as CollegeEvent]);
+    }
   };
 
-  const deleteEvent = (id: string) => {
+  const updateEvent = async (id: string, updates: Partial<CollegeEvent>) => {
+    const { data: updatedEvent, error } = await supabase
+      .from("events")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (updatedEvent) {
+      setEvents((prev) => prev.map((e) => (e.id === id ? (updatedEvent as CollegeEvent) : e)));
+    }
+  };
+
+  const deleteEvent = async (id: string) => {
+    const { error } = await supabase.from("events").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setEvents((prev) => prev.filter((event) => event.id !== id));
-    // optionally cleanup related registrations
     setRegistrations((prev) => prev.filter((reg) => reg.eventId !== id));
   };
 
-  const registerStudent = (eventId: string, student: { id: string; name: string; email: string }) => {
-    const newRegistration: Registration = {
-      id: `r${Date.now()}`,
+  const registerStudent = async (eventId: string, student: { id: string; name: string; email: string }) => {
+    const newReg = {
       eventId,
       studentId: student.id,
       studentName: student.name,
       studentEmail: student.email,
       status: "pending",
-      registeredAt: new Date().toISOString(),
     };
-    
-    setRegistrations((prev) => [...prev, newRegistration]);
-    
-    // Increment registered count for the event
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId
-          ? { ...event, registeredCount: event.registeredCount + 1 }
-          : event
-      )
-    );
-  };
 
-  const updateRegistrationStatus = (registrationId: string, status: RegistrationStatus) => {
-    setRegistrations((prev) =>
-      prev.map((reg) => {
-        if (reg.id === registrationId) {
-          return { ...reg, status };
-        }
-        return reg;
-      })
-    );
-    
-    // If a registration is rejected, decrement the event's registeredCount
-    if (status === "rejected") {
-      const reg = registrations.find(r => r.id === registrationId);
-      if (reg) {
-        setEvents((prevEvents) => prevEvents.map(event => 
-          event.id === reg.eventId ? { ...event, registeredCount: Math.max(0, event.registeredCount - 1) } : event
-        ));
+    const { data: insertedReg, error } = await supabase
+      .from("registrations")
+      .insert([newReg])
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Registration failed: " + error.message);
+      return;
+    }
+
+    if (insertedReg) {
+      setRegistrations((prev) => [...prev, insertedReg as Registration]);
+      
+      const event = events.find((e) => e.id === eventId);
+      if (event) {
+        const newCount = event.registeredCount + 1;
+        await supabase.from("events").update({ registeredCount: newCount }).eq("id", eventId);
+        setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, registeredCount: newCount } : e)));
       }
     }
   };
 
-  // Don't render children until data is loaded from local storage to prevent flicker
+  const updateRegistrationStatus = async (registrationId: string, status: RegistrationStatus) => {
+    const { error } = await supabase
+      .from("registrations")
+      .update({ status })
+      .eq("id", registrationId);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setRegistrations((prev) =>
+      prev.map((reg) => (reg.id === registrationId ? { ...reg, status } : reg))
+    );
+
+    if (status === "rejected") {
+      const reg = registrations.find((r) => r.id === registrationId);
+      if (reg) {
+        const event = events.find((e) => e.id === reg.eventId);
+        if (event) {
+          const newCount = Math.max(0, event.registeredCount - 1);
+          await supabase.from("events").update({ registeredCount: newCount }).eq("id", event.id);
+          setEvents((prevEvents) =>
+            prevEvents.map((e) => (e.id === event.id ? { ...e, registeredCount: newCount } : e))
+          );
+        }
+      }
+    }
+  };
+
   if (!isLoaded) return null;
 
   return (

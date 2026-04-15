@@ -7,30 +7,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, resendVerification } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [showResend, setShowResend] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setShowResend(false);
+    
     if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
     const success = await login(email, password);
     if (success) {
-      if (email.toLowerCase() === "creativevalue26@gmail.com") {
+      if (email.toLowerCase() === "bhavyacode12@gmail.com") {
         navigate("/admin");
       } else {
         navigate("/events");
       }
     } else {
       setError("Invalid credentials or unverified email. Please check your email for a verification link.");
+      setShowResend(true);
     }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    await resendVerification(email);
+    setResending(false);
   };
 
   return (
@@ -140,6 +151,19 @@ const LoginPage = () => {
               Create one
             </Link>
           </p>
+
+          {showResend && (
+            <div className="mt-4 pt-4 border-t border-border text-center flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">Didn't receive your verification link?</p>
+              <Button 
+                variant="outline" 
+                onClick={handleResend}
+                disabled={resending}
+              >
+                {resending ? "Sending..." : "Resend Verification Email"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

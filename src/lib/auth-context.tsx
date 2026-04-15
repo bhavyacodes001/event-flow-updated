@@ -3,13 +3,14 @@ import { User } from "./types";
 import { supabase } from "./supabase";
 import { toast } from "sonner";
 
-const ADMIN_EMAIL = "creativevalue26@gmail.com"; // Keep hardcoded admin check for simple RBAC
+const ADMIN_EMAIL = "bhavyacode12@gmail.com"; // Keep hardcoded admin check for simple RBAC
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; message?: string; autoLogin?: boolean }>;
+  resendVerification: (email: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     // Supabase will automatically send a verification email if that setting is enabled in the dashboard
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -78,9 +79,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     if (error) {
+      return { success: false, message: error.message };
+    }
+    return { success: true, autoLogin: !!data.session };
+  };
+
+  const resendVerification = async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+    });
+    
+    if (error) {
       toast.error(error.message);
       return false;
     }
+    
+    toast.success("Verification email resent successfully!");
     return true;
   };
 
@@ -89,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, resendVerification, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

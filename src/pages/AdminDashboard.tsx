@@ -1,8 +1,12 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useData } from "@/lib/data-context";
 import { CalendarDays, Users, ClipboardList, TrendingUp, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
+import { format, parseISO } from "date-fns";
+
+const COLORS = ['hsl(var(--chart-1, 221.2 83.2% 53.3%))', 'hsl(var(--chart-2, 160 84% 39%))', 'hsl(var(--chart-3, 38 92% 50%))', 'hsl(var(--chart-4, 0 84% 60%))', 'hsl(var(--chart-5, 262 83% 58%))'];
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -18,6 +22,29 @@ const AdminDashboard = () => {
     { label: "Pending", value: pendingApprovals, icon: Users, accent: "bg-amber-500/10 text-amber-600" },
     { label: "Seats Filled", value: totalSeatsUsed, icon: TrendingUp, accent: "bg-emerald-500/10 text-emerald-600" },
   ];
+
+  const registrationsByCategoryData = useMemo(() => {
+    const counts = registrations.reduce((acc, reg) => {
+      const event = events.find((e) => e.id === reg.eventId);
+      if (event) {
+        acc[event.category] = (acc[event.category] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [registrations, events]);
+
+  const categoryData = useMemo(() => {
+    const counts = events.reduce((acc, event) => {
+      acc[event.category] = (acc[event.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [events]);
 
   return (
     <div className="animate-fade-in">
@@ -76,6 +103,69 @@ const AdminDashboard = () => {
           </div>
           <p className="text-sm text-muted-foreground">Approve or reject student registrations</p>
         </Link>
+      </div>
+
+      {/* Analytics Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+        {/* Registrations Chart */}
+        <div className="p-6 rounded-xl border border-border bg-card">
+          <h3 className="text-xl font-heading text-foreground mb-6">Registrations by Category</h3>
+          <div className="h-64 mt-4">
+            {registrationsByCategoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={registrationsByCategoryData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <RechartsTooltip
+                    cursor={{ fill: 'hsl(var(--muted))' }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                  />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                No registration data yet
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Categories Chart */}
+        <div className="p-6 rounded-xl border border-border bg-card">
+          <h3 className="text-xl font-heading text-foreground mb-6">Events by Category</h3>
+          <div className="h-64 mt-4">
+            {categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                No event data yet
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Recent events table */}

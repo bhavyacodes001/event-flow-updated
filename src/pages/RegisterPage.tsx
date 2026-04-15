@@ -26,12 +26,11 @@ const RegisterPage = () => {
       setError("Password must be at least 6 characters");
       return;
     }
-    const success = await register(name, email, password);
-    if (success) {
+    const result = await register(name, email, password);
+    if (result.success) {
       setError("Success! Please check your email inbox to verify your account before logging in.");
-      // Optional: navigate("/login");
     } else {
-      setError("Registration failed. Email might already be in use.");
+      setError(result.message || "Registration failed. Please try again.");
     }
   };
 
